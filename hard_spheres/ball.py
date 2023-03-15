@@ -4,7 +4,7 @@ File for the Ball-class used in the simulation
 
 from __future__ import annotations
 
-import misc
+import common.misc
 import numpy as np
 
 # Shortcut for typing

@@ -10,7 +10,7 @@ import math
 import misc
 import numpy as np
 
-from ball import Ball
+from hard_spheres.ball import Ball
 
 # For typing
 numeric = int | float
