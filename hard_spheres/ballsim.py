@@ -84,9 +84,14 @@ def simulate(grid: HashGrid, balls: list[Ball], dt: numeric, end: numeric,
     vels = np.zeros(shape=(timesteps, len(balls), 2))
     for i in range(timesteps):
         grid.update_grid()
+        # Create the Path object for every ball
+        for b in balls:
+            others = grid.get_nearby_balls(ball=b)
+            b.create_path(others=others, dt=dt, w=w, h=h)
+        # Execute the Path of each ball, i.e., update their positions
         for j, b in enumerate(balls):
-            others = grid.get_nearby_balls(b)
-            b.update_position(others=others, dt=dt, w=w, h=h)
+            offset = b.path.execute()
+            b.pos += offset
             coords[i, j] = b.pos
             vels[i, j] = b.v
     return coords, vels
@@ -153,7 +158,6 @@ def create_anim(coords: np.ndarray, vels: np.ndarray, dt: numeric, end: numeric,
     """
     timesteps = int(end / dt)
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-    # fig.tight_layout()
     anim = FuncAnimation(fig=fig, func=_update_plots, frames=timesteps,
                          fargs=(axes, coords, vels, w, h, r), interval=50)
     anim.save(filename='simulation.gif', writer='pillow', fps=30, dpi=100)
@@ -172,8 +176,10 @@ def main():
     # Simulation and animation
     balls = init_balls(n=num_balls, v_max=v_max, r=radius, w=width, h=height)
     grid = HashGrid(balls=balls, w=width, h=height, cell_w=cell_w, cell_h=cell_h)
-    coords, vels = simulate(grid=grid, balls=balls, dt=dt, end=end, w=width, h=height)
-    create_anim(coords=coords, vels=vels, dt=dt, end=end, w=width, h=height, r=radius)
+    coords, vels = simulate(grid=grid, balls=balls, dt=dt, end=end, w=width,
+                            h=height)
+    create_anim(coords=coords, vels=vels, dt=dt, end=end, w=width, h=height,
+                r=radius)
 
 
 if __name__ == '__main__':
