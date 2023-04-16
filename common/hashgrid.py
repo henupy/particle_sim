@@ -85,7 +85,7 @@ class HashGrid:
         for b in self.balls:
             self.add_ball(b)
 
-    def get_nearby_balls(self, ball: Ball) -> list[list[Ball]]:
+    def get_nearby_balls(self, ball: Ball) -> list[Ball]:
         """
         Returns the balls that are in the same or in the neighboring cells
         with the given ball
