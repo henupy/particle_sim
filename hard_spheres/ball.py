@@ -9,23 +9,37 @@ import common.misc as misc
 
 from common.path import Path
 
-# Shortcut for typing
-numeric = int | float
-
 
 class Ball:
-    def __init__(self, p0: np.ndarray, v0: np. ndarray, r: numeric) -> None:
+    def __init__(self, p0: np.ndarray, v0: np. ndarray, r: int | float,
+                 color: tuple[int, int, int] = (0, 0, 0)) -> None:
         """
         :param p0: Initial position of the ball [m]
         :param v0: Initial velocity of the ball [m/s]
         :param r: Radius of the ball [m]
+        :param color: Optional parameter for the color of the ball that will be
+        used in the animation. Must be given as an RGB tuple of ints in the range
+        0 ... 255. Defaults to black (0, 0, 0).
         """
         self.pos = p0
         self.v = v0
         self.r = r
+        # The colors must be in range 0 ... 1
+        self.color = [c / 255 for c in color]
+        # Create the arrays for the positions and velocities throughout the
+        # simulation
+        self.positions = np.zeros(shape=(1, 2))
+        self.positions[0] = p0
+        self.vels = np.zeros(shape=(1, 2))
+        self.vels[0] = p0
+        # In the beginning, the Ball does not have a Path yet
         self.path = None
+        # Whether the ball has collided with another ball or not at
+        # this timestep or not
+        self.has_collided = False
 
-    def _apply_boundaries(self, w: numeric, h: numeric, dt: numeric) -> None:
+    def _apply_boundaries(self, w: int | float, h: int | float,
+                          dt: int | float) -> None:
         """
         Collides the ball with the boundaries. The collisions are handled so
         that if the ball is deemed to be out of bounds, a step is taken back in time,
@@ -38,6 +52,10 @@ class Ball:
         :param dt: Timestep [s]
         :return: Whether a collision occurred or not
         """
+        # The ball shouldn't be at a complete stop outside the boundaries
+        # if misc.closely_equal(val1=misc.vec_len(self.v), val2=0):
+        #     self.path = Path(v0=self.v, dt=dt)
+        #     return
         x, y = self.pos
         # Right boundary
         if (x - self.r) < 0:
@@ -78,7 +96,7 @@ class Ball:
         # the 'v1' and 't_coll' parameters from its Path object
         self.path = Path(v0=self.v, dt=dt)
 
-    def _calc_velocity(self, other: Ball, dt: numeric) -> None:
+    def _calc_velocity(self, other: Ball, dt: int | float) -> None:
         """
         Calculates the end velocity for both balls after their collision
         :param other: The ball that our ball has collided
@@ -99,8 +117,11 @@ class Ball:
         # The new velocity for the other ball
         other.v = v2 - (np.dot(v21, r21) / misc.sq_len(r21)) * r21
         other.path = Path(v0=other.v, dt=dt)
+        # Mark the balls as collided ones for the rest of this timestep
+        self.has_collided = True
+        other.has_collided = True
 
-    def _apply_collisions(self, others: list[Ball], dt: numeric) -> None:
+    def _apply_collisions(self, others: list[Ball], dt: int | float) -> None:
         """
         Applies collisions between the balls. As of right now, only takes into
         account a single collision, i.e., a collision with only one other ball.
@@ -109,16 +130,19 @@ class Ball:
         :param dt: Timestep [s]
         :return:
         """
-        for ball in others:
-            dist = misc.vec_len(ball.pos - self.pos)
-            rsum = self.r + ball.r
+        for other in others:
+            # If the ball has already collided, do nothing
+            if other.has_collided:
+                continue
+            dist = misc.vec_len(other.pos - self.pos)
+            rsum = self.r + other.r
             if dist <= rsum:
-                self._calc_velocity(other=ball, dt=dt)
+                self._calc_velocity(other=other, dt=dt)
                 # We assume that the ball collides with only one other ball
                 return
 
-    def create_path(self, others: list, dt: numeric, w: numeric,
-                    h: numeric) -> None:
+    def create_path(self, others: list[Ball], dt: int | float, w: int | float,
+                    h: int | float) -> None:
         """
         :param others:
         :param dt:
@@ -128,6 +152,19 @@ class Ball:
         """
         self._apply_collisions(others=others, dt=dt)
         self._apply_boundaries(w=w, h=h, dt=dt)
+
+    def step_forward(self) -> None:
+        """
+        :return:
+        """
+        # Execute the path
+        pos_offset = self.path.execute()
+        # Update the position and save it and the velocity
+        self.pos += pos_offset
+        self.positions = np.vstack(tup=(self.positions, self.pos))
+        self.vels = np.vstack(tup=(self.vels, self.v))
+        # Reset the collision for the next timestep
+        self.has_collided = False
 
     def __eq__(self, other: Ball) -> bool:
         """

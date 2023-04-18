@@ -1,6 +1,6 @@
 """
-Simulation of billiard-like balls moving around in a 2d box subjected to gravity.
-The animation is done with matplotlib.
+Simulation of billiard-like balls moving around in a 2d box (not subject
+to gravity). The animation is done with matplotlib.
 """
 
 import numpy as np
@@ -13,9 +13,6 @@ from typing import Callable, Any
 from common.hashgrid import HashGrid
 from matplotlib.animation import FuncAnimation
 
-# Shortcut for type hinting
-numeric = int | float
-
 
 def timer(f: Callable) -> Any:
     """
@@ -26,12 +23,12 @@ def timer(f: Callable) -> Any:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         s = perf_counter()
         rv = f(*args, **kwargs)
-        print(f'Function {f.__name__} ran in {perf_counter() - s:.3f} s')
+        print(f"Function '{f.__name__}' ran in {perf_counter() - s:.3f} s")
         return rv
     return wrapper
 
 
-def _rand_range(a: numeric, b: numeric) -> numeric:
+def _rand_range(a: int | float, b: int | float) -> int | float:
     """
     Return a random float in the range [a, b)
     :param a:
@@ -41,7 +38,8 @@ def _rand_range(a: numeric, b: numeric) -> numeric:
     return np.random.random() * (b - a) + a
 
 
-def init_balls(n: int, v_max: numeric, r: numeric, w: numeric, h: numeric) -> list:
+def init_balls(n: int, v_max: int | float, r: int | float, w: int | float,
+               h: int | float) -> list:
     """
     Creates a list of balls at random locations within the 2d box
     :param n: Number of balls
@@ -65,8 +63,8 @@ def init_balls(n: int, v_max: numeric, r: numeric, w: numeric, h: numeric) -> li
 
 
 @timer
-def simulate(grid: HashGrid, balls: list[Ball], dt: numeric, end: numeric,
-             w: numeric, h: numeric) -> tuple[np.ndarray, np.ndarray]:
+def simulate(grid: HashGrid, balls: list[Ball], dt: int | float, end: int | float,
+             w: int | float, h: int | float) -> None:
     """
     Simulates the motion of the balls
     :param grid: A HashGrid containing da balls
@@ -75,30 +73,21 @@ def simulate(grid: HashGrid, balls: list[Ball], dt: numeric, end: numeric,
     :param end: End time [s]
     :param w: Width of the box [m]
     :param h: Height of the box [m]
-    :return: A tuple of two arrays. First array contains the positions of every
-    ball at every timestep. The second array contains the velocities of every
-    ball at every timestep.
+    :return:
     """
-    timesteps = int(end / dt)
-    coords = np.zeros(shape=(timesteps, len(balls), 2))
-    vels = np.zeros(shape=(timesteps, len(balls), 2))
-    for i in range(timesteps):
+    for i in range(int(end / dt)):
         grid.update_grid()
         # Create the Path object for every ball
         for b in balls:
             others = grid.get_nearby_balls(ball=b)
             b.create_path(others=others, dt=dt, w=w, h=h)
         # Execute the Path of each ball, i.e., update their positions
-        for j, b in enumerate(balls):
-            offset = b.path.execute()
-            b.pos += offset
-            coords[i, j] = b.pos
-            vels[i, j] = b.v
-    return coords, vels
+        for b in balls:
+            b.step_forward()
 
 
-def _update_plots(n: int, axes: list[plt.axes], coords: np.ndarray, vels: np.ndarray,
-                  w: numeric, h: numeric, r: numeric) -> None:
+def _update_plots(n: int, axes: list[plt.axes], balls: list[Ball],
+                  w: int | float, h: int | float, r: int | float) -> None:
     """
     Sets the data for the line-objects to be the coordinates
     at the current timestep for the animation
@@ -106,8 +95,7 @@ def _update_plots(n: int, axes: list[plt.axes], coords: np.ndarray, vels: np.nda
     :param axes: A list of two plt.axes objects. The first one must be for the
     scatter plot of the balls and the second one for the plot of the velocity
     distribution.
-    :param coords: Position of each ball at each timestep
-    :param vels: Velocity of each ball at each timestep
+    :param balls: List of the balls
     :param w: Width of the box [m]
     :param h: Height of the box [m]
     :param r: Radius of the ball [m]
@@ -120,15 +108,16 @@ def _update_plots(n: int, axes: list[plt.axes], coords: np.ndarray, vels: np.nda
     ax = axes[0]
     ax.set_xlim(0, w)
     ax.set_ylim(0, h)
-    xs = coords[n, :, 0]
-    ys = coords[n, :, 1]
-    circles = [plt.Circle((x, y), radius=r, linewidth=0) for x, y in zip(xs, ys)]
-    c_patches = mpl.collections.PatchCollection(circles, facecolors='red')
+    circles = [plt.Circle(xy=(b.positions[n, 0], b.positions[n, 1]), radius=r,
+                          linewidth=0) for b in balls]
+    cs = [b.color for b in balls]
+    c_patches = mpl.collections.PatchCollection(circles, facecolor=cs)
     ax.add_collection(c_patches)
 
     # Plot the velocity distribution to the other axis
     ax = axes[1]
-    vel_mag = np.sqrt(np.sum(np.power(vels[n], 2), axis=1))
+    vels = [b.vels[n] for b in balls]
+    vel_mag = np.sqrt(np.sum(np.power(vels, 2), axis=1))
     vel_max = np.max(vel_mag)
     vel_avg = np.mean(vel_mag)
     bins = np.linspace(0, vel_max * 1.1, 50)
@@ -143,12 +132,12 @@ def _update_plots(n: int, axes: list[plt.axes], coords: np.ndarray, vels: np.nda
     ax.set_ylim(0, 0.025)
 
 
-def create_anim(coords: np.ndarray, vels: np.ndarray, dt: numeric, end: numeric,
-                w: numeric, h: numeric, r: numeric) -> None:
+@timer
+def create_anim(balls: list[Ball], dt: int | float, end: int | float,
+                w: int | float, h: int | float, r: int | float) -> None:
     """
     Creates an animation using the data from the simulated motion of the balls
-    :param coords: Location of each ball at each timestep
-    :param vels: Velocity of each ball at each timestep
+    :param balls: List of the balls
     :param dt: Timestep [s]
     :param end: Ending time [s]
     :param w: Width of the box [m]
@@ -159,7 +148,7 @@ def create_anim(coords: np.ndarray, vels: np.ndarray, dt: numeric, end: numeric,
     timesteps = int(end / dt)
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
     anim = FuncAnimation(fig=fig, func=_update_plots, frames=timesteps,
-                         fargs=(axes, coords, vels, w, h, r), interval=50)
+                         fargs=(axes, balls, w, h, r), interval=1)
     anim.save(filename='simulation.gif', writer='pillow', fps=30, dpi=100)
 
 
@@ -167,7 +156,7 @@ def main():
     # Initial conditions
     width, height = 1, 1  # Dimensions of the 2d box [m]
     dt = 0.00005  # Timestep [s]
-    end = 0.05  # End time of the simulation [s]
+    end = 0.005  # End time of the simulation [s]
     num_balls = 200  # Number of balls
     radius = 0.01  # [m]
     v_max = 200  # Maximum velocity for a ball [m/s]
@@ -176,10 +165,8 @@ def main():
     # Simulation and animation
     balls = init_balls(n=num_balls, v_max=v_max, r=radius, w=width, h=height)
     grid = HashGrid(balls=balls, w=width, h=height, cell_w=cell_w, cell_h=cell_h)
-    coords, vels = simulate(grid=grid, balls=balls, dt=dt, end=end, w=width,
-                            h=height)
-    create_anim(coords=coords, vels=vels, dt=dt, end=end, w=width, h=height,
-                r=radius)
+    simulate(grid=grid, balls=balls, dt=dt, end=end, w=width, h=height)
+    create_anim(balls=balls, dt=dt, end=end, w=width, h=height, r=radius)
 
 
 if __name__ == '__main__':
