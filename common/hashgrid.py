@@ -12,13 +12,10 @@ import common.misc as misc
 
 from hard_spheres.ball import Ball
 
-# For typing
-numeric = int | float
-
 
 class HashGrid:
-    def __init__(self, w: numeric, h: numeric, cell_w: numeric, cell_h: numeric,
-                 balls: list[Ball]) -> None:
+    def __init__(self, w: int | float, h: int | float, cell_w: int | float,
+                 cell_h: int | float, balls: list[Ball]) -> None:
         """
         :param w: Width of the total region containing the grid [m]
         :param h: Height of the total region containing the grid [m]
