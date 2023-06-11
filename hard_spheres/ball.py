@@ -7,19 +7,17 @@ from __future__ import annotations
 import numpy as np
 import common.misc as misc
 
-from common.path import Path
-
 
 class Ball:
-    def __init__(self, p0: np.ndarray, v0: np. ndarray, r: int | float,
+    def __init__(self, p0: np.ndarray, v0: np.ndarray, r: int | float,
                  color: tuple[int, int, int] = (0, 0, 0)) -> None:
         """
         :param p0: Initial position of the ball [m]
         :param v0: Initial velocity of the ball [m/s]
         :param r: Radius of the ball [m]
         :param color: Optional parameter for the color of the ball that will be
-        used in the animation. Must be given as an RGB tuple of ints in the range
-        0 ... 255. Defaults to black (0, 0, 0).
+            used in the animation. Must be given as an RGB tuple of ints in the
+            range 0 ... 255. Defaults to black (0, 0, 0).
         """
         self.pos = p0
         self.v = v0
@@ -34,133 +32,103 @@ class Ball:
         self.vels[0] = p0
         # In the beginning, the Ball does not have a Path yet
         self.path = None
-        # Whether the ball has collided with another ball or not at
-        # this timestep or not
+        # Whether the ball has collided or not with another ball during
+        # the ongoing timestep
         self.has_collided = False
 
-    def _apply_boundaries(self, w: int | float, h: int | float,
-                          dt: int | float) -> None:
+    def _apply_boundaries(self, w: int | float, h: int | float) -> None:
         """
-        Collides the ball with the boundaries. The collisions are handled so
-        that if the ball is deemed to be out of bounds, a step is taken back in time,
-        i.e., the ball is returned to its position in the previous timestep. After that,
-        the collision time is calculated, and the ball is moved to the collision
-        position. After that, the corresponding velocity component is flipped
-        accordingly, and time is advanced to the end of the timestep
+        Handles the collision between the ball and a wall
         :param w: Width of the box [m]
         :param h: Height of the box [m]
-        :param dt: Timestep [s]
-        :return: Whether a collision occurred or not
-        """
-        # The ball shouldn't be at a complete stop outside the boundaries
-        # if misc.closely_equal(val1=misc.vec_len(self.v), val2=0):
-        #     self.path = Path(v0=self.v, dt=dt)
-        #     return
-        x, y = self.pos
-        # Right boundary
-        if (x - self.r) < 0:
-            # Move the ball back to its location before the collision
-            self.pos += -self.v * dt
-            # Collision time
-            dt_c = (self.r - self.pos[0]) / self.v[0]
-            # New velocity after the collision
-            v0 = self.v
-            self.v = np.array([-self.v[0], self.v[1]])
-            self.path = Path(v0=v0, dt=dt, v1=self.v, t_coll=dt_c)
-            return
-        # Left boundary
-        if (x + self.r) > w:
-            self.pos += -self.v * dt
-            dt_c = (w - self.r - self.pos[0]) / self.v[0]
-            v0 = self.v
-            self.v = np.array([-self.v[0], self.v[1]])
-            self.path = Path(v0=v0, dt=dt, v1=self.v, t_coll=dt_c)
-            return
-        # Bottom boundary
-        if (y - self.r) < 0:
-            self.pos += -self.v * dt
-            dt_c = (self.r - self.pos[1]) / self.v[1]
-            v0 = self.v
-            self.v = np.array([self.v[0], -self.v[1]])
-            self.path = Path(v0=v0, dt=dt, v1=self.v, t_coll=dt_c)
-            return
-        # Top boundary
-        if (y + self.r) > h:
-            self.pos += -self.v * dt
-            dt_c = (h - self.r - self.pos[1]) / self.v[1]
-            v0 = self.v
-            self.v = np.array([self.v[0], -self.v[1]])
-            self.path = Path(v0=v0, dt=dt, v1=self.v, t_coll=dt_c)
-            return
-        # If the ball did not collide with any boundaries, we can omit
-        # the 'v1' and 't_coll' parameters from its Path object
-        self.path = Path(v0=self.v, dt=dt)
-
-    def _calc_velocity(self, other: Ball, dt: int | float) -> None:
-        """
-        Calculates the end velocity for both balls after their collision
-        :param other: The ball that our ball has collided
-        :param dt: Timestep [s]
         :return:
         """
-        # TODO: 'Untangle' the balls after their collision and
-        # TODO: and build their Paths correctly
-        # Shorthands
+        x, y = self.pos
+        # Left boundary
+        if (x - self.r) < 0:
+            # Set the ball's position within the boundaries
+            self.pos[0] = self.r
+            # Flip the horizontal velocity
+            self.v[0] = -self.v[0]
+        # Right boundary
+        if (x + self.r) > w:
+            # Set the ball's position within the boundaries
+            self.pos[0] = w - self.r
+            # Flip the horizontal velocity
+            self.v[0] = -self.v[0]
+        # Bottom boundary
+        if (y - self.r) < 0:
+            # Set the ball's position within the boundaries
+            self.pos[1] = self.r
+            # Flip the vertical velocity
+            self.v[1] = -self.v[1]
+        # Top boundary
+        if (y + self.r) > h:
+            # Set the ball's position within the boundaries
+            self.pos[1] = h - self.r
+            # Flip the vertical velocity
+            self.v[1] = -self.v[1]
+
+    def _handle_collision(self, other: Ball, direc: np.ndarray,
+                          dist: int | float) -> None:
+        """
+        :param other:
+        :param direc:
+        :param dist:
+        :return:
+        """
+        # Move the bodies so that they don't overlap anymore
+        direc *= (1 / dist)
+        corr = (self.r + other.r - dist) / 2
+        self.pos += direc * -corr
+        other.pos += direc * corr
+        # Calculate the end velocities for the both balls
         v1, v2 = self.v, other.v
         v12 = v1 - v2
         v21 = v2 - v1
         r12 = self.pos - other.pos
         r21 = other.pos - self.pos
-        # The new velocity for our ball
         self.v = v1 - (np.dot(v12, r12) / misc.sq_len(r12)) * r12
-        self.path = Path(v0=self.v, dt=dt)
-        # The new velocity for the other ball
         other.v = v2 - (np.dot(v21, r21) / misc.sq_len(r21)) * r21
-        other.path = Path(v0=other.v, dt=dt)
-        # Mark the balls as collided ones for the rest of this timestep
+        # Create the Paths for the two balls
+        # Mark that the balls collided on this timestep
         self.has_collided = True
         other.has_collided = True
 
-    def _apply_collisions(self, others: list[Ball], dt: int | float) -> None:
+    def _apply_collisions(self, others: list[Ball]) -> None:
         """
         Applies collisions between the balls. As of right now, only takes into
         account a single collision, i.e., a collision with only one other ball.
         :param others: List of all the balls the ball under inspection could
-        collide
-        :param dt: Timestep [s]
+            collide
         :return:
         """
         for other in others:
             # If the ball has already collided, do nothing
             if other.has_collided:
                 continue
-            dist = misc.vec_len(other.pos - self.pos)
+            direc = other.pos - self.pos
+            dist = misc.vec_len(direc)
             rsum = self.r + other.r
             if dist <= rsum:
-                self._calc_velocity(other=other, dt=dt)
+                self._handle_collision(other=other, direc=direc, dist=dist)
                 # We assume that the ball collides with only one other ball
                 return
 
-    def create_path(self, others: list[Ball], dt: int | float, w: int | float,
-                    h: int | float) -> None:
+    def step_forward(self, others: list[Ball], dt: int | float, w: int | float,
+                     h: int | float) -> None:
         """
-        :param others:
-        :param dt:
-        :param w:
-        :param h:
+        :param others: The "other" balls that our ball can collide with
+        :param dt: Timestep [s]
+        :param w: Width of the box [m]
+        :param h: Height of the box [m]
         :return:
         """
-        self._apply_collisions(others=others, dt=dt)
-        self._apply_boundaries(w=w, h=h, dt=dt)
-
-    def step_forward(self) -> None:
-        """
-        :return:
-        """
-        # Execute the path
-        pos_offset = self.path.execute()
-        # Update the position and save it and the velocity
-        self.pos += pos_offset
+        # Compute new velocities (and positions) due to collisions
+        self._apply_collisions(others=others)
+        self._apply_boundaries(w=w, h=h)
+        # Take a step forward in time
+        self.pos += self.v * dt
         self.positions = np.vstack(tup=(self.positions, self.pos))
         self.vels = np.vstack(tup=(self.vels, self.v))
         # Reset the collision for the next timestep
