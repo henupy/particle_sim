@@ -38,13 +38,14 @@ def clamp(a: int | float, b: int | float, num: int | float) -> int | float:
     return num
 
 
-def closely_equal(val1: int | float, val2: int | float) -> bool:
+def closely_equal(val1: int | float, val2: int | float,
+                  epsilon: int | float = 1e-6) -> bool:
     """
     Checks if the two values are closely equal, where the 'closeness'
     is definef by the value of epsilon.
     :param val1:
     :param val2:
+    :param epsilon:
     :return:
     """
-    epsilon = 1e-5
     return abs(val1 - val2) < epsilon
