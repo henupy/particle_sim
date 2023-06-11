@@ -1,6 +1,6 @@
 """
-Simulation of billiard-like balls moving around in a 2d box (not subject
-to gravity). The animation is done with matplotlib.
+Simulation of billiard-like balls moving around in a 2d box subject
+to gravity. The animation is done with matplotlib.
 """
 
 import numpy as np
@@ -80,56 +80,30 @@ def simulate(grid: HashGrid, balls: list[Ball], dt: int | float, end: int | floa
         # Create the Path object for every ball
         for b in balls:
             others = grid.get_nearby_balls(ball=b)
-            b.create_path(others=others, dt=dt, w=w, h=h)
-        # Execute the Path of each ball, i.e., update their positions
-        for b in balls:
-            b.step_forward()
+            b.step_forward(others=others, dt=dt, w=w, h=h)
 
 
-def _update_plots(n: int, axes: list[plt.axes], balls: list[Ball],
+def _update_plots(n: int, axis: plt.axes, balls: list[Ball],
                   w: int | float, h: int | float, r: int | float) -> None:
     """
     Sets the data for the line-objects to be the coordinates
     at the current timestep for the animation
     :param n: Timestep
-    :param axes: A list of two plt.axes objects. The first one must be for the
-    scatter plot of the balls and the second one for the plot of the velocity
-    distribution.
+    :param axis: A plt.axes object for which to draw stuff
     :param balls: List of the balls
     :param w: Width of the box [m]
     :param h: Height of the box [m]
     :param r: Radius of the ball [m]
     :return:
     """
-    # Clear both axes to set up a new frame
-    [ax.clear() for ax in axes]
-
-    # Plot the balls on the first axis object
-    ax = axes[0]
-    ax.set_xlim(0, w)
-    ax.set_ylim(0, h)
+    axis.clear()
+    axis.set_xlim(0, w)
+    axis.set_ylim(0, h)
     circles = [plt.Circle(xy=(b.positions[n, 0], b.positions[n, 1]), radius=r,
                           linewidth=0) for b in balls]
     cs = [b.color for b in balls]
     c_patches = mpl.collections.PatchCollection(circles, facecolor=cs)
-    ax.add_collection(c_patches)
-
-    # Plot the velocity distribution to the other axis
-    ax = axes[1]
-    vels = [b.vels[n] for b in balls]
-    vel_mag = np.sqrt(np.sum(np.power(vels, 2), axis=1))
-    vel_max = np.max(vel_mag)
-    vel_avg = np.mean(vel_mag)
-    bins = np.linspace(0, vel_max * 1.1, 50)
-    ax.hist(vel_mag, bins=bins, density=True)
-    v = np.linspace(0, vel_max * 1.1, 1000)
-    a = 2 / (vel_avg * vel_avg)
-    fv = a * v * np.exp(-a * np.power(v, 2) / 2)
-    ax.plot(v, fv)
-    ax.set_xlabel('Velocity [m/s]')
-    ax.set_ylabel('Number of particles')
-    ax.set_xlim(0, vel_max * 1.1)
-    ax.set_ylim(0, 0.025)
+    axis.add_collection(c_patches)
 
 
 @timer
@@ -146,21 +120,22 @@ def create_anim(balls: list[Ball], dt: int | float, end: int | float,
     :return:
     """
     timesteps = int(end / dt)
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(6, 6))
     anim = FuncAnimation(fig=fig, func=_update_plots, frames=timesteps,
-                         fargs=(axes, balls, w, h, r), interval=1)
+                         fargs=(ax, balls, w, h, r), interval=1)
     anim.save(filename='simulation.gif', writer='pillow', fps=30, dpi=100)
 
 
 def main():
     # Initial conditions
-    width, height = 1, 1  # Dimensions of the 2d box [m]
-    dt = 0.00005  # Timestep [s]
-    end = 0.005  # End time of the simulation [s]
+    width, height = 2, 2  # Dimensions of the 2d box [m]
+    # TODO: Investigate why 'x not in list' happens (large velocity and timestep)
+    dt = 0.05  # Timestep [s]
+    end = 5  # End time of the simulation [s]
     num_balls = 200  # Number of balls
     radius = 0.01  # [m]
-    v_max = 200  # Maximum velocity for a ball [m/s]
-    cell_w = cell_h = 4 * radius  # Width and height of a cell in the hash grid [m]
+    v_max = 1  # Maximum velocity for a ball [m/s]
+    cell_w = cell_h = 4 * radius  # Size of a cell in the hash grid [m]
 
     # Simulation and animation
     balls = init_balls(n=num_balls, v_max=v_max, r=radius, w=width, h=height)
