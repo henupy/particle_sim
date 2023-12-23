@@ -16,7 +16,7 @@ def vec_len(v: np.ndarray) -> int | float:
 
 def sq_len(v: np.ndarray) -> int | float:
     """
-    The 'squared' length of a vector
+    The "squared" length of a vector
     :param v:
     :return:
     """
@@ -41,8 +41,8 @@ def clamp(a: int | float, b: int | float, num: int | float) -> int | float:
 def closely_equal(val1: int | float, val2: int | float,
                   epsilon: int | float = 1e-6) -> bool:
     """
-    Checks if the two values are closely equal, where the 'closeness'
-    is definef by the value of epsilon.
+    Checks if the two values are closely equal, where the "closeness"
+    is defined by the value of epsilon.
     :param val1:
     :param val2:
     :param epsilon:

@@ -39,7 +39,7 @@ def _rand_range(a: int | float, b: int | float) -> int | float:
 
 
 def init_balls(n: int, v_max: int | float, r: int | float, w: int | float,
-               h: int | float) -> list:
+               h: int | float, c: tuple= (255, 0, 255)) -> list:
     """
     Creates a list of balls at random locations within the 2d box
     :param n: Number of balls
@@ -47,6 +47,7 @@ def init_balls(n: int, v_max: int | float, r: int | float, w: int | float,
     :param r: Radius of the balls [m/s]
     :param w: Width of the box [m]
     :param h: Height of the box [m]
+    :param c: Color of the balls
     :return:
     """
     balls = []
@@ -58,7 +59,7 @@ def init_balls(n: int, v_max: int | float, r: int | float, w: int | float,
         v_mag = _rand_range(0, v_max)
         v0 = np.array([np.cos(angle), np.sin(angle)]) * v_mag
         pos = np.array([x, y])
-        balls.append(Ball(p0=pos, v0=v0, r=r))
+        balls.append(Ball(p0=pos, v0=v0, r=r, color=c))
     return balls
 
 
@@ -84,7 +85,7 @@ def simulate(grid: HashGrid, balls: list[Ball], dt: int | float, end: int | floa
 
 
 def _update_plots(n: int, axis: plt.axes, balls: list[Ball],
-                  w: int | float, h: int | float, r: int | float) -> None:
+                  w: int | float, h: int | float, r: int | float) -> tuple:
     """
     Sets the data for the line-objects to be the coordinates
     at the current timestep for the animation
@@ -103,7 +104,46 @@ def _update_plots(n: int, axis: plt.axes, balls: list[Ball],
                           linewidth=0) for b in balls]
     cs = [b.color for b in balls]
     c_patches = mpl.collections.PatchCollection(circles, facecolor=cs)
+    c_patches.set_paths(c_patches)
     axis.add_collection(c_patches)
+    return axis,
+
+
+def _init_anim(fig: plt.figure, ax: plt.axes, balls: list[Ball], w: int,
+               h: int, r: int | float) -> tuple:
+    """
+    :param fig:
+    :param ax:
+    :param balls:
+    :param w:
+    :param h:
+    :param r:
+    :return:
+    """
+    ax.set_xlim(0, w)
+    ax.set_ylim(0, h)
+    size = (w + h) / 2
+    ms = 2 * r * ax.get_window_extent().width / size * 72 / fig.dpi
+    xs = [b.positions[0, 0] for b in balls]
+    ys = [b.positions[0, 1] for b in balls]
+    # vels = [np.linalg.norm(b.vels[0]) for b in balls]
+    colors = [b.positions[0, 1] for b in balls]
+    plots = ax.scatter(xs, ys, marker="o", s=ms, c=colors, cmap="jet")
+    return plots
+
+
+def _animate(n: int, ax: plt.axes, balls: list[Ball]) -> tuple:
+    """
+    :param n:
+    :param ax:
+    :param balls:
+    :return:
+    """
+    coords = [b.positions[n] for b in balls]
+    # colors = [np.linalg.norm(b.vels[n]) for b in balls]
+    ax.set_offsets(coords)
+    # ax.set_array(colors)
+    return ax,
 
 
 @timer
@@ -121,20 +161,21 @@ def create_anim(balls: list[Ball], dt: int | float, end: int | float,
     """
     timesteps = int(end / dt)
     fig, ax = plt.subplots(figsize=(6, 6))
-    anim = FuncAnimation(fig=fig, func=_update_plots, frames=timesteps,
-                         fargs=(ax, balls, w, h, r), interval=1)
-    anim.save(filename='simulation.gif', writer='pillow', fps=30, dpi=100)
+    ax = _init_anim(fig=fig, ax=ax, balls=balls, w=w, h=h, r=r)
+    anim = FuncAnimation(fig=fig, func=_animate,
+                         frames=timesteps, fargs=(ax, balls), blit=True)
+    anim.save(filename="simulation.gif", writer="pillow", fps=30, dpi=100)
 
 
 def main():
     # Initial conditions
     width, height = 2, 2  # Dimensions of the 2d box [m]
-    # TODO: Investigate why 'x not in list' happens (large velocity and timestep)
+    # TODO: Investigate why "x not in list" happens (large velocity and timestep)
     dt = 0.05  # Timestep [s]
-    end = 5  # End time of the simulation [s]
-    num_balls = 200  # Number of balls
-    radius = 0.01  # [m]
-    v_max = 1  # Maximum velocity for a ball [m/s]
+    end = 1  # End time of the simulation [s]
+    num_balls = 1000  # Number of balls
+    radius = 0.025  # [m]
+    v_max = 5  # Maximum velocity for a ball [m/s]
     cell_w = cell_h = 4 * radius  # Size of a cell in the hash grid [m]
 
     # Simulation and animation
@@ -144,5 +185,5 @@ def main():
     create_anim(balls=balls, dt=dt, end=end, w=width, h=height, r=radius)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

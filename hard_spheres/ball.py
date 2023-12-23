@@ -46,25 +46,25 @@ class Ball:
         x, y = self.pos
         # Left boundary
         if (x - self.r) < 0:
-            # Set the ball's position within the boundaries
+            # Set the ball"s position within the boundaries
             self.pos[0] = self.r
             # Flip the horizontal velocity
             self.v[0] = -self.v[0]
         # Right boundary
         if (x + self.r) > w:
-            # Set the ball's position within the boundaries
+            # Set the ball"s position within the boundaries
             self.pos[0] = w - self.r
             # Flip the horizontal velocity
             self.v[0] = -self.v[0]
         # Bottom boundary
         if (y - self.r) < 0:
-            # Set the ball's position within the boundaries
+            # Set the ball"s position within the boundaries
             self.pos[1] = self.r
             # Flip the vertical velocity
             self.v[1] = -self.v[1]
         # Top boundary
         if (y + self.r) > h:
-            # Set the ball's position within the boundaries
+            # Set the ball"s position within the boundaries
             self.pos[1] = h - self.r
             # Flip the vertical velocity
             self.v[1] = -self.v[1]

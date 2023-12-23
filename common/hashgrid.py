@@ -53,7 +53,7 @@ class HashGrid:
         :return:
         """
         # The ball might go out of bounds due to the discrete timestep
-        # so let's do a bit of a check to negate that
+        # so let"s do a bit of a check to negate that
         min_x = min_y = 0.001
         max_x, max_y = self.w - 0.001, self.h - 0.001
         x = int(misc.clamp(a=min_x, b=max_x, num=pos[0]) / self.cw)
@@ -71,8 +71,8 @@ class HashGrid:
 
     def update_grid(self) -> None:
         """
-        As the balls' position changes, they might move into a different grid cell.
-        This function updates the balls' grid cells based on their new positions.
+        As the balls" position changes, they might move into a different grid cell.
+        This function updates the balls" grid cells based on their new positions.
         :return:
         """
         # Clear the grid cells
@@ -93,13 +93,13 @@ class HashGrid:
         r, c = self._hash(ball.pos)
         for j in range(r - 1, r + 2):
             for i in range(c - 1, c + 2):
-                # If the search goes out of bounds, we'll get a KeyError
+                # If the search goes out of bounds, we"ll get a KeyError
                 try:
                     balls.extend(self.grid[j, i])
                 except KeyError:
                     pass
 
-        # Let's remove the ball passed as a parameter from the list so it won't
+        # Let"s remove the ball passed as a parameter from the list so it won"t
         # collide with itself
         balls.remove(ball)
         return balls
