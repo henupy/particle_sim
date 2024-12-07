@@ -4,8 +4,8 @@ File for the Ball-class used in the simulation
 
 from __future__ import annotations
 
+import misc
 import numpy as np
-import common.misc as misc
 
 
 class Ball:

@@ -8,9 +8,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from ball import Ball
+from hashgrid import HashGrid
 from time import perf_counter
 from typing import Callable, Any
-from common.hashgrid import HashGrid
 from matplotlib.animation import FuncAnimation
 
 

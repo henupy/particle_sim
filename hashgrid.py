@@ -7,10 +7,10 @@ spatial-hashing-r2697/
 """
 
 import math
+import misc
 import numpy as np
-import common.misc as misc
 
-from hard_spheres.ball import Ball
+from ball import Ball
 
 
 class HashGrid:
